@@ -1,99 +1,114 @@
-from fastapi import FastAPI
+from flask import Flask, request, jsonify
 from bind_logic import *
 
-app = FastAPI()
+app = Flask(__name__)
+API_KEY = "12345"
 
-API_KEY = "12345"   # change this
-
-def auth(key):
+def check(key):
     return key == API_KEY
 
-
-@app.get("/")
+# ---------- HOME ----------
+@app.route("/")
 def home():
-    return {"status": "API Running"}
+    return jsonify({
+        "status": "FULL API RUNNING",
+        "endpoints": [
+            "/bind","/cancel","/links","/revoke",
+            "/send_otp","/verify_otp",
+            "/verify_security","/verify_identity_otp",
+            "/rebind","/unbind"
+        ],
+        "usage": "?token=XXX&key=12345"
+    })
 
+# ---------- BASIC ----------
+@app.route("/bind")
+def bind():
+    token = request.args.get("token")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    return jsonify(get_bind_info(token).json())
 
-@app.get("/bind")
-def bind(token: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return get_bind_info(token).json()
-    except:
-        return {"error": "failed"}
+@app.route("/cancel")
+def cancel():
+    token = request.args.get("token")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    return jsonify(cancel_request(token).json())
 
+@app.route("/links")
+def links():
+    token = request.args.get("token")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    return jsonify(get_platforms(token).json())
 
-@app.get("/cancel")
-def cancel(token: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return cancel_request(token).json()
-    except:
-        return {"error": "failed"}
+@app.route("/revoke")
+def revoke():
+    token = request.args.get("token")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    ok,msg = revoke_token(token)
+    return jsonify({"success":ok,"message":msg})
 
+# ---------- OTP ----------
+@app.route("/send_otp")
+def send():
+    token = request.args.get("token")
+    email = request.args.get("email")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    return jsonify(send_otp(token,email).json())
 
-@app.get("/links")
-def links(token: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return get_platforms(token).json()
-    except:
-        return {"error": "failed"}
+@app.route("/verify_otp")
+def verify():
+    token = request.args.get("token")
+    email = request.args.get("email")
+    otp = request.args.get("otp")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    return jsonify(verify_otp(token,email,otp).json())
 
+# ---------- VERIFY ----------
+@app.route("/verify_security")
+def verify_sec():
+    token = request.args.get("token")
+    code = request.args.get("code")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    return jsonify(verify_identity_with_security_code(token,code).json())
 
-@app.get("/user")
-def user(token: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    return get_user_info(token) or {"error": "failed"}
+@app.route("/verify_identity_otp")
+def verify_id():
+    token = request.args.get("token")
+    email = request.args.get("email")
+    otp = request.args.get("otp")
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
+    return jsonify(verify_identity_with_otp(token,email,otp).json())
 
+# ---------- REBIND ----------
+@app.route("/rebind")
+def rebind():
+    token = request.args.get("token")
+    identity = request.args.get("identity")
+    verifier = request.args.get("verifier")
+    email = request.args.get("email")
 
-@app.get("/revoke")
-def revoke(token: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    ok, msg = revoke_token(token)
-    return {"success": ok, "response": msg}
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
 
+    return jsonify(
+        create_rebind_request(token,identity,verifier,email).json()
+    )
 
-@app.get("/send_otp")
-def send(token: str, email: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return send_otp(token, email).json()
-    except:
-        return {"error": "failed"}
+# ---------- UNBIND ----------
+@app.route("/unbind")
+def unbind():
+    token = request.args.get("token")
+    identity = request.args.get("identity")
 
+    if not check(request.args.get("key")):
+        return jsonify({"error":"unauthorized"})
 
-@app.get("/verify_otp")
-def verify(token: str, email: str, otp: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return verify_otp(token, email, otp).json()
-    except:
-        return {"error": "failed"}
-
-
-@app.get("/verify_security")
-def verify_sec(token: str, code: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return verify_identity_with_security_code(token, code).json()
-    except:
-        return {"error": "failed"}
-
-
-@app.get("/rebind")
-def rebind(token: str, identity: str, verifier: str, email: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return create_rebind_request(token, identity, verifier, email).json()
-    except:
-        return {"error": "failed"}
-
-
-@app.get("/unbind")
-def unbind(token: str, identity: str, key: str):
-    if not auth(key): return {"error": "unauthorized"}
-    try:
-        return unbind_identity(token, identity).json()
-    except:
-        return {"error": "failed"}
+    return jsonify(unbind_identity(token,identity).json())
