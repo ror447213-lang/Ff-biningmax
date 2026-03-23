@@ -1,21 +1,24 @@
 import requests
 import hashlib
 
+# ---------- CONFIG ----------
 BASE_URL = "https://100067.connect.garena.com"
 
 HEADERS = {
     "User-Agent": "GarenaMSDK/4.0.39 (Android 10)",
-    "Content-Type": "application/x-www-form-urlencoded"
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Accept-Encoding": "gzip"
 }
 
 APP_ID = "100067"
 
 REFRESH_TOKEN = "1380dcb63ab3a077dc05bdf0b25ba4497c403a5b4eae96d7203010eafa6c83a8"
 
-
+# ---------- HELPER ----------
 def sha256_hash(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
+# ---------- CORE FUNCTIONS ----------
 
 def get_bind_info(token):
     return requests.get(
@@ -24,30 +27,42 @@ def get_bind_info(token):
         params={"app_id": APP_ID, "access_token": token}
     )
 
-
 def send_otp(token, email):
     return requests.post(
         f"{BASE_URL}/game/account_security/bind:send_otp",
         headers=HEADERS,
-        data={"app_id": APP_ID, "access_token": token, "email": email}
+        data={
+            "app_id": APP_ID,
+            "access_token": token,
+            "email": email,
+            "locale": "en_PK",
+            "region": "PK"
+        }
     )
-
 
 def verify_otp(token, email, otp):
     return requests.post(
         f"{BASE_URL}/game/account_security/bind:verify_otp",
         headers=HEADERS,
-        data={"app_id": APP_ID, "access_token": token, "email": email, "otp": otp}
+        data={
+            "app_id": APP_ID,
+            "access_token": token,
+            "email": email,
+            "otp": otp
+        }
     )
-
 
 def verify_identity_with_otp(token, email, otp):
     return requests.post(
         f"{BASE_URL}/game/account_security/bind:verify_identity",
         headers=HEADERS,
-        data={"app_id": APP_ID, "access_token": token, "email": email, "otp": otp}
+        data={
+            "app_id": APP_ID,
+            "access_token": token,
+            "email": email,
+            "otp": otp
+        }
     )
-
 
 def verify_identity_with_security_code(token, code):
     return requests.post(
@@ -59,7 +74,6 @@ def verify_identity_with_security_code(token, code):
             "secondary_password": sha256_hash(code)
         }
     )
-
 
 def create_rebind_request(token, identity, verifier, email):
     return requests.post(
@@ -74,22 +88,26 @@ def create_rebind_request(token, identity, verifier, email):
         }
     )
 
-
 def cancel_request(token):
     return requests.post(
         f"{BASE_URL}/game/account_security/bind:cancel_request",
         headers=HEADERS,
-        data={"app_id": APP_ID, "access_token": token}
+        data={
+            "app_id": APP_ID,
+            "access_token": token
+        }
     )
-
 
 def unbind_identity(token, identity):
     return requests.post(
         f"{BASE_URL}/game/account_security/bind:unbind_identity",
         headers=HEADERS,
-        data={"app_id": APP_ID, "access_token": token, "identity_token": identity}
+        data={
+            "app_id": APP_ID,
+            "access_token": token,
+            "identity_token": identity
+        }
     )
-
 
 def get_platforms(token):
     return requests.get(
@@ -98,23 +116,26 @@ def get_platforms(token):
         params={"access_token": token}
     )
 
-
 def get_user_info(token):
     try:
         r = requests.get(
             "https://prod-api.reward.ff.garena.com/redemption/api/auth/inspect_token/",
-            headers={"access-token": token}
+            headers={"access-token": token},
+            timeout=10
         )
         return r.json() if r.status_code == 200 else None
     except:
         return None
 
-
 def revoke_token(token):
     try:
         r = requests.get(
             "https://100067.connect.garena.com/oauth/logout",
-            params={"access_token": token, "refresh_token": REFRESH_TOKEN}
+            params={
+                "access_token": token,
+                "refresh_token": REFRESH_TOKEN
+            },
+            timeout=10
         )
         return True, r.text if r.status_code == 200 else (False, r.text)
     except Exception as e:
